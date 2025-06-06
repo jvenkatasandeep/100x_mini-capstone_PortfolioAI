@@ -1,0 +1,130 @@
+[server]
+headless = true
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+serverAddress = "0.0.0.0"
+serverPort = 8501
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#0066cc"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f7f8fa"
+textColor = "#000000"
+font = "sans serif"
+
+[runner]
+# Address to listen on. Defaults to 0.0.0.0
+address = "0.0.0.0"
+
+# Port to listen on. Defaults to 8501.
+port = 8501
+
+# Enable development mode. Defaults to false.
+development = false
+
+# Enable file watcher. Defaults to true.
+fileWatcherType = "auto"
+
+# Enable running on save. Defaults to false.
+runOnSave = false
+
+# Enable running on save. Defaults to false.
+runOnSave = false
+
+[s3]
+# Enable S3 file uploads. Defaults to false.
+enable = false
+
+[logger]
+# Log level. One of: "error", "warning", "info", "debug". Defaults to "info".
+level = "info"
+
+[client]
+# Whether to show the hamburger menu. Defaults to true.
+showSidebarNavigation = true
+
+# Whether to show the download button. Defaults to true.
+showDownloadButton = true
+
+# Whether to show the rerun button. Defaults to true.
+showRerunButton = true
+
+# Whether to show the clear cache button. Defaults to true.
+showClearCacheButton = true
+
+# Whether to show the menu button. Defaults to true.
+showMenuButton = true
+
+# Whether to show the theme options. Defaults to true.
+showThemeOptions = true
+
+# Whether to show the report a bug button. Defaults to true.
+showReportBugButton = true
+
+# Whether to show the documentation button. Defaults to true.
+showDocumentationButton = true
+
+# Whether to show the about section. Defaults to true.
+showAboutSection = true
+
+# Whether to show the source code. Defaults to true.
+showSourceCode = true
+
+# Whether to show the full screen button. Defaults to true.
+showFullScreenButton = true
+
+# Whether to show the hamburger menu. Defaults to true.
+showHamburgerMenu = true
+
+# Whether to show the toolbar. Defaults to true.
+showToolbar = true
+
+# Whether to show the sidebar. Defaults to true.
+showSidebar = true
+
+# Whether to show the status bar. Defaults to true.
+showStatusBar = true
+
+# Whether to show the error details. Defaults to true.
+showErrorDetails = true
+
+# Whether to show the warning details. Defaults to true.
+showWarningDetails = true
+
+# Whether to show the info details. Defaults to true.
+showInfoDetails = true
+
+# Whether to show the debug details. Defaults to true.
+showDebugDetails = true
+
+# Whether to show the success details. Defaults to true.
+showSuccessDetails = true
+
+# Whether to show the error toast. Defaults to true.
+showErrorToast = true
+
+# Whether to show the warning toast. Defaults to true.
+showWarningToast = true
+
+# Whether to show the info toast. Defaults to true.
+showInfoToast = true
+
+# Whether to show the success toast. Defaults to true.
+showSuccessToast = true
+
+# Whether to show the error dialog. Defaults to true.
+showErrorDialog = true
+
+# Whether to show the warning dialog. Defaults to true.
+showWarningDialog = true
+
+# Whether to show the info dialog. Defaults to true.
+showInfoDialog = true
+
+# Whether to show the success dialog. Defaults to true.
+showSuccessDialog = true
