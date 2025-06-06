@@ -14,16 +14,24 @@ supabase>=1.0.0,<3.0.0
 
 # Data Validation & Settings
 pydantic>=2.0.0,<3.0.0
-pydantic-settings>=2.0.0,<3.0.0  # Updated for Python 3.13 and PyYAML 6.0.1 compatibility
-PyYAML>=6.0.1  # Required for Python 3.13 compatibility
+pydantic-settings>=2.0.0,<3.0.0
+PyYAML>=6.0.1
 
 # File Processing
 PyPDF2>=3.0.0,<4.0.0
+pypdf>=3.0.0,<4.0.0
 python-docx>=1.0.0,<2.0.0
 python-magic>=0.4.27,<0.5.0
+filetype>=1.2.0,<2.0.0
+
+# PDF Generation
+reportlab>=4.0.0,<5.0.0
 
 # Templates
 Jinja2>=3.0.0,<4.0.0
 
 # Async
 aiofiles>=23.0.0,<24.0.0
+
+
+groq>=0.1.0,<1.0.0
