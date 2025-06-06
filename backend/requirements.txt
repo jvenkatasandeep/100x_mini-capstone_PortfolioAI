@@ -1,0 +1,29 @@
+# Core
+fastapi>=0.100.0,<1.0.0  # Updated to be compatible with Pydantic 2.x
+uvicorn>=0.22.0,<0.24.0
+python-multipart>=0.0.6,<1.0.0
+python-dotenv>=1.0.0,<2.0.0
+
+# Authentication
+python-jose[cryptography]>=3.3.0,<4.0.0
+passlib[bcrypt]>=1.7.4,<2.0.0
+
+# Database
+sqlalchemy>=1.4.0,<2.1.0
+supabase>=1.0.0,<3.0.0
+
+# Data Validation & Settings
+pydantic>=2.0.0,<3.0.0
+pydantic-settings>=2.0.0,<3.0.0  # Updated for Python 3.13 and PyYAML 6.0.1 compatibility
+PyYAML>=6.0.1  # Required for Python 3.13 compatibility
+
+# File Processing
+PyPDF2>=3.0.0,<4.0.0
+python-docx>=1.0.0,<2.0.0
+python-magic>=0.4.27,<0.5.0
+
+# Templates
+Jinja2>=3.0.0,<4.0.0
+
+# Async
+aiofiles>=23.0.0,<24.0.0

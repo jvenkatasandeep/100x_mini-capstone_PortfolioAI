@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .section { margin-bottom: 30px; }
+        h1 { color: #333; }
+        h2 { color: #444; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .experience { margin-bottom: 20px; }
+        .skills { display: flex; flex-wrap: wrap; gap: 10px; }
+        .skill-tag { background: #f0f0f0; padding: 5px 10px; border-radius: 15px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{name}}</h1>
+        <p>{{title}}</p>
+        <p>{{email}} | {{phone}} | {{location}}</p>
+    </div>
+
+    <div class="section">
+        <h2>About</h2>
+        <p>{{summary}}</p>
+    </div>
+
+    <div class="section">
+        <h2>Experience</h2>
+        {% for exp in experience %}
+        <div class="experience">
+            <h3>{{exp.title}} at {{exp.company}}</h3>
+            <p><em>{{exp.start_date}} - {{exp.end_date or 'Present'}}</em></p>
+            <ul>
+                {% for item in exp.description %}
+                <li>{{item}}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>Education</h2>
+        {% for edu in education %}
+        <div class="education">
+            <h3>{{edu.degree}} in {{edu.field_of_study or 'N/A'}}</h3>
+            <p>{{edu.institution}} | {{edu.start_date}} - {{edu.end_date or 'Present'}}</p>
+            {% if edu.gpa %}<p>GPA: {{edu.gpa}}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>Skills</h2>
+        <div class="skills">
+            {% for skill in skills %}
+            <span class="skill-tag">{{skill}}</span>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
