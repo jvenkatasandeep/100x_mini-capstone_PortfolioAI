@@ -188,9 +188,20 @@ def show_generated_portfolio(portfolio_data: Optional[Dict]):
                     
                 with st.expander(section.replace('_', ' ').title()):
                     if isinstance(content, str):
-                        st.markdown(content)
+                        # If the content is markdown, render it with st.markdown
+                        st.markdown(content, unsafe_allow_html=True)
                     elif isinstance(content, (list, dict)):
-                        st.json(content)
+                        # For lists or dictionaries, check if they contain markdown content
+                        if isinstance(content, dict) and any(isinstance(v, str) and ('*' in v or '#' in v or '[' in v) for v in content.values()):
+                            # If the dictionary contains markdown-like strings, render them as markdown
+                            for k, v in content.items():
+                                st.markdown(f'**{k}**')
+                                if isinstance(v, str):
+                                    st.markdown(v, unsafe_allow_html=True)
+                                else:
+                                    st.write(v)
+                        else:
+                            st.json(content)
                     else:
                         st.text(str(content))
     except Exception as e:

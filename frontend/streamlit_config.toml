@@ -81,6 +81,9 @@ showFullScreenButton = true
 # Whether to show the hamburger menu. Defaults to true.
 showHamburgerMenu = true
 
+# Whether to show the settings menu. Defaults to true.
+showSettingsMenu = true
+
 # Whether to show the toolbar. Defaults to true.
 showToolbar = true
 

@@ -394,7 +394,7 @@ class GroqClient:
                     "missing_keywords": ["keyword3", "keyword4", ...]
                 }}
                 """.format(
-                    resume_text=resume_text[:10000],  # Limit size to prevent token limit issues
+                    resume_text=resume_text[:8000],  # Limit size to prevent token limit issues
                     job_description_section=f"\nJOB DESCRIPTION TO MATCH:\n{job_description[:2000]}\n" if job_description else "",
                     job_description_instruction="1a. Tailor the resume to match the job description if relevant." if job_description else ""
                 )
@@ -430,24 +430,68 @@ class GroqClient:
             
             try:
                 logger.debug("Parsing response from Groq API...")
-                # Clean up the response first
+                # Clean up the response first - remove control characters except newlines and tabs
+                response = ''.join(char for char in response if ord(char) >= 32 or char in '\n\r\t')
                 response = response.strip()
                 
                 # Try to parse the response as JSON directly
                 try:
+                    # First try direct JSON parse
                     result = json.loads(response)
                     logger.debug("Successfully parsed direct JSON response")
                 except json.JSONDecodeError as e:
-                    logger.debug("Direct JSON parse failed, trying to extract JSON from markdown...")
+                    logger.debug(f"Direct JSON parse failed: {str(e)}. Trying to clean and extract JSON...")
+                    
                     # Try to extract JSON from markdown code blocks
                     import re
-                    json_match = re.search(r'```(?:json)?\n(.*?)\n```', response, re.DOTALL) or re.search(r'({.*})', response, re.DOTALL)
+                    json_match = re.search(r'```(?:json)?\s*(\{.*\})\s*```', response, re.DOTALL) 
+                    if not json_match:
+                        # If no code block, try to find JSON object directly
+                        json_match = re.search(r'(\{[\s\S]*\})', response)
+                    
                     if json_match:
-                        json_str = json_match.group(1).strip()
-                        result = json.loads(json_str)
-                        logger.debug("Successfully parsed JSON from markdown code block")
-                    else:
-                        raise ValueError("No valid JSON found in the response")
+                        try:
+                            json_str = json_match.group(1).strip()
+                            # Clean the JSON string
+                            json_str = ''.join(char for char in json_str if ord(char) >= 32 or char in '\n\r\t')
+                            # Try to fix common JSON issues
+                            json_str = json_str.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+                            json_str = re.sub(r',\s*([}\]])', r'\1', json_str)  # Remove trailing commas
+                            json_str = re.sub(r'([\{\[,])\s*([}\],])', r'\1""\2', json_str)  # Add empty strings for missing values
+                            
+                            # Try to parse the cleaned JSON
+                            result = json.loads(json_str)
+                            logger.debug("Successfully parsed JSON after cleaning")
+                        except json.JSONDecodeError as e2:
+                            logger.error(f"Failed to parse JSON after cleaning: {str(e2)}")
+                            # Try to salvage what we can by extracting key-value pairs
+                            try:
+                                result = {}
+                                # Extract optimized_text
+                                text_match = re.search(r'"optimized_text"\s*:\s*"(.*?)(?<!\\)"', json_str, re.DOTALL)
+                                if text_match:
+                                    result['optimized_text'] = text_match.group(1).replace('\\"', '"')
+                                
+                                # Extract score
+                                score_match = re.search(r'"score"\s*:\s*(\d+(?:\.\d+)?)', json_str)
+                                if score_match:
+                                    result['score'] = float(score_match.group(1))
+                                
+                                # Extract suggestions
+                                suggestions_match = re.search(r'"suggestions"\s*:\s*\[(.*?)\]', json_str, re.DOTALL)
+                                if suggestions_match:
+                                    suggestions_str = suggestions_match.group(1)
+                                    suggestions = [s.strip(' "\'') for s in re.findall(r'"(.*?)(?<!\\)"', suggestions_str)]
+                                    result['suggestions'] = suggestions
+                                
+                                if not result:
+                                    raise ValueError("Could not extract any fields from response")
+                                
+                                logger.debug("Partially parsed JSON using regex extraction")
+                                
+                            except Exception as e3:
+                                logger.error(f"Failed to extract fields using regex: {str(e3)}")
+                                raise ValueError("Could not parse response as valid JSON")
                 
                 # Validate the result structure
                 required_fields = ["optimized_text", "score", "suggestions"]

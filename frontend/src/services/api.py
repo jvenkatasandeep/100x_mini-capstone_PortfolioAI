@@ -681,40 +681,130 @@ class APIService:
             
             # Try to parse JSON response
             try:
-                # First, clean the response text of control characters
-                cleaned_text = ''.join(char for char in response.text if ord(char) >= 32 or char in '\n\r\t')
+                response_text = response.text
                 
-                # Try to parse the cleaned JSON
+                # Log detailed response information
+                logger.error("=== RESPONSE INSPECTION ===")
+                logger.error(f"Status Code: {response.status_code}")
+                logger.error("Headers:")
+                for k, v in response.headers.items():
+                    logger.error(f"  {k}: {v}")
+                
+                # Log the raw response for debugging
+                logger.error(f"Raw response (first 500 chars): {response_text[:500]}")
+                logger.error(f"Raw response length: {len(response_text)} characters")
+                
+                # Save raw response to file for debugging
                 try:
-                    response_data = json.loads(cleaned_text)
-                    logger.debug(f"Parsed JSON response: {json.dumps(response_data, indent=2)[:500]}...")
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse cleaned JSON. Error: {str(e)}")
-                    # Try to find where the error occurred
-                    error_pos = e.pos
-                    context = 50
-                    start = max(0, error_pos - context)
-                    end = min(len(cleaned_text), error_pos + context)
-                    error_context = cleaned_text[start:end]
-                    logger.error(f"Error context: ...{error_context}...")
+                    import os
+                    debug_dir = os.path.join(os.path.expanduser('~'), 'resume_optimizer_debug')
+                    os.makedirs(debug_dir, exist_ok=True)
                     
-                    # Try to fix common JSON issues
-                    try:
-                        # Try to extract valid JSON using regex as a last resort
-                        import re
-                        json_match = re.search(r'\{.*\}', cleaned_text, re.DOTALL)
-                        if json_match:
-                            response_data = json.loads(json_match.group(0))
-                            logger.info("Successfully extracted JSON using regex fallback")
+                    # Save raw response
+                    raw_path = os.path.join(debug_dir, 'raw_response.txt')
+                    with open(raw_path, 'w', encoding='utf-8') as f:
+                        f.write(response_text)
+                    logger.error(f"Raw response saved to: {raw_path}")
+                    
+                    # Save response bytes
+                    bytes_path = os.path.join(debug_dir, 'response_bytes.txt')
+                    with open(bytes_path, 'w', encoding='utf-8') as f:
+                        f.write("Offset   Hex    Dec  Char\n")
+                        f.write("------  -----  ---  ----\n")
+                        for i in range(0, min(500, len(response.content)), 16):
+                            chunk = response.content[i:i+16]
+                            hex_str = ' '.join(f'{b:02x}' for b in chunk)
+                            ascii_str = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in chunk)
+                            f.write(f"{i:06x}  {hex_str.ljust(47)}  {ascii_str}\n")
+                    logger.error(f"Response bytes saved to: {bytes_path}")
+                    
+                except Exception as file_err:
+                    logger.error(f"Failed to save debug files: {str(file_err)}")
+                
+                # First, try to parse the JSON as-is
+                try:
+                    # Try to parse with strict JSON first
+                    response_data = json.loads(response_text)
+                    logger.debug(f"Successfully parsed JSON response: {json.dumps(response_data, indent=2)[:500]}...")
+                except json.JSONDecodeError as e:
+                    # Log detailed error information
+                    logger.error(f"JSON Decode Error: {str(e)}")
+                    if hasattr(e, 'doc') and e.doc is not None:
+                        logger.error(f"Error doc type: {type(e.doc)}")
+                        logger.error(f"Error doc length: {len(e.doc) if e.doc else 0}")
+                    if hasattr(e, 'pos') and e.pos is not None:
+                        pos = e.pos
+                        start = max(0, pos - 20)
+                        end = min(len(response_text), pos + 20)
+                        context = response_text[start:end]
+                        logger.error(f"Error at position {pos}, context: ...{context}...")
+                        if pos < len(response_text):
+                            logger.error(f"Problematic character: '{response_text[pos]}' (ord: {ord(response_text[pos])})")
+                    else:
+                        logger.error("No position information available in JSONDecodeError")
+                    logger.warning(f"Initial JSON parse failed, attempting to clean and retry. Error: {str(e)}")
+                    
+                    # Log the problematic character
+                    if hasattr(e, 'pos') and e.pos is not None:
+                        pos = e.pos
+                        start = max(0, pos - 10)
+                        end = min(len(response_text), pos + 10)
+                        context = response_text[start:end]
+                        logger.warning(f"Error at position {pos}, context: ...{context}...")
+                        logger.warning(f"Problematic character: '{response_text[pos]}' (ord: {ord(response_text[pos])})")
+                    
+                    # Try to clean the response text by removing control characters
+                    cleaned_chars = []
+                    for i, char in enumerate(response_text):
+                        if ord(char) >= 32 or char in '\n\r\t':
+                            cleaned_chars.append(char)
                         else:
-                            raise json.JSONDecodeError("No valid JSON found in response", cleaned_text, 0)
-                    except Exception as inner_e:
-                        logger.error(f"Failed to recover JSON: {str(inner_e)}")
-                        return {
-                            "status": "error",
-                            "message": f"Invalid JSON in response: {str(e)}\nContext: ...{error_context}...",
-                            "response_text": cleaned_text[:1000]
-                        }
+                            logger.debug(f"Removed control character at position {i}: '{char}' (ord: {ord(char)})")
+                    
+                    cleaned_text = ''.join(cleaned_chars)
+                    logger.debug(f"Cleaned response text (first 1000 chars): {cleaned_text[:1000]}")
+                    
+                    # Try parsing the cleaned text
+                    try:
+                        response_data = json.loads(cleaned_text)
+                        logger.info("Successfully parsed JSON after cleaning control characters")
+                    except json.JSONDecodeError as inner_e:
+                        logger.error(f"Failed to parse cleaned JSON. Error: {str(inner_e)}")
+                        if hasattr(inner_e, 'pos') and inner_e.pos is not None:
+                            pos = inner_e.pos
+                            start = max(0, pos - 10)
+                            end = min(len(cleaned_text), pos + 10)
+                            context = cleaned_text[start:end]
+                            logger.error(f"Error in cleaned JSON at position {pos}, context: ...{context}...")
+                            if pos < len(cleaned_text):
+                                logger.error(f"Problematic character: '{cleaned_text[pos]}' (ord: {ord(cleaned_text[pos])})")
+                        
+                        # Try to extract valid JSON using regex as a last resort
+                        try:
+                            import re
+                            # Try to find the JSON object in the response
+                            json_match = re.search(r'(\{.*\})', cleaned_text, re.DOTALL)
+                            if json_match:
+                                json_str = json_match.group(1)
+                                # Clean up common JSON issues
+                                json_str = re.sub(r',\s*\]', ']', json_str)  # Trailing commas in arrays
+                                json_str = re.sub(r',\s*\}', '}', json_str)  # Trailing commas in objects
+                                response_data = json.loads(json_str)
+                                logger.info("Successfully extracted JSON using regex fallback")
+                            else:
+                                raise json.JSONDecodeError("No valid JSON found in response", cleaned_text, 0)
+                        except Exception as inner_e2:
+                            logger.error(f"Failed to recover JSON: {str(inner_e2)}")
+                            error_pos = getattr(inner_e, 'pos', 0)
+                            context = 50
+                            start = max(0, error_pos - context)
+                            end = min(len(cleaned_text), error_pos + context)
+                            error_context = cleaned_text[start:end]
+                            return {
+                                "status": "error",
+                                "message": f"Invalid JSON in response: {str(inner_e2)}\nContext: ...{error_context}...",
+                                "response_text": cleaned_text[:1000]
+                            }
             except Exception as e:
                 logger.error(f"Unexpected error parsing response: {str(e)}")
                 return {
@@ -732,14 +822,49 @@ class APIService:
                     "status_code": response.status_code
                 }
             
-            # Prepare the result
-            result = {
-                "status": "success",
-                "score": response_data.get('score', 0),
-                "optimized_text": response_data.get('optimized_text', resume_text),
-                "suggestions": response_data.get('suggestions', []),
-                "missing_keywords": response_data.get('missing_keywords', [])
-            }
+            # Prepare the result with proper error handling for each field
+            try:
+                # Get the score with a default of 0 if not present or invalid
+                score = float(response_data.get('score', 0))
+                score = max(0, min(100, score))  # Ensure score is between 0-100
+                
+                # Get the optimized text, fallback to original if not present
+                optimized_text = response_data.get('optimized_text', resume_text)
+                if not optimized_text or optimized_text.strip() == '':
+                    optimized_text = resume_text
+                
+                # Get suggestions, ensuring it's a list
+                suggestions = response_data.get('suggestions', [])
+                if not isinstance(suggestions, list):
+                    suggestions = []
+                
+                # Get missing keywords, ensuring it's a list
+                missing_keywords = response_data.get('missing_keywords', [])
+                if not isinstance(missing_keywords, list):
+                    missing_keywords = []
+                
+                result = {
+                    "status": "success",
+                    "score": score,
+                    "optimized_text": optimized_text,
+                    "suggestions": suggestions,
+                    "missing_keywords": missing_keywords
+                }
+                
+                logger.debug(f"Prepared result with score: {score}, "
+                            f"suggestions: {len(suggestions)}, "
+                            f"missing_keywords: {len(missing_keywords)}")
+                
+            except Exception as e:
+                logger.error(f"Error preparing optimization result: {str(e)}", exc_info=True)
+                # Return a safe default result if there's an error processing the response
+                result = {
+                    "status": "success",
+                    "score": 0,
+                    "optimized_text": resume_text,
+                    "suggestions": [],
+                    "missing_keywords": []
+                }
             
             logger.info(f"Optimization successful. Score: {result.get('score', 'N/A')}")
             return result

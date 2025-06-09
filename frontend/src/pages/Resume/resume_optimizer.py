@@ -188,6 +188,7 @@ def show_upload_step():
             label_visibility="collapsed"
         )
     
+   
     
     if uploaded_file is not None:
         try:
@@ -288,19 +289,86 @@ def show_results():
                     logger.debug(f"Optimization result: {json.dumps(log_result, indent=2, default=str)[:1000]}...")
                     
                     if result.get('status') == 'success':
-                        # Clean the optimized text of any control characters except newlines and tabs
-                        optimized_text = result.get('optimized_text', resume_text)
-                        if isinstance(optimized_text, str):
-                            optimized_text = ''.join(char for char in optimized_text 
-                                                  if ord(char) >= 32 or char in '\n\r\t')
+                        # Get the optimized text, ensuring it's a string
+                        optimized_text = str(result.get('optimized_text', '')).strip()
                         
-                        score = float(result.get('score', 0))
+                        # If no optimized text was returned, use the original text
+                        if not optimized_text:
+                            logger.warning("No optimized text returned from API, using original text")
+                            optimized_text = resume_text
+                        
+                        # Clean the text - remove control characters except newlines and tabs
+                        if isinstance(optimized_text, str):
+                            # First, try to clean common control characters
+                            cleaned_text = []
+                            for char in optimized_text:
+                                if ord(char) >= 32 or char in '\n\r\t':
+                                    cleaned_text.append(char)
+                                else:
+                                    logger.debug(f"Removed control character: {ord(char)}")
+                            
+                            optimized_text = ''.join(cleaned_text)
+                            
+                            # Remove any remaining problematic characters that might break the display
+                            optimized_text = optimized_text.replace('\x00', '')  # Remove null bytes
+                            optimized_text = optimized_text.replace('\x1a', '')  # Remove substitute character
+                            optimized_text = optimized_text.replace('\x1b', '')  # Remove escape character
+                        
+                        # Get score and ensure it's a valid float between 0 and 100
+                        try:
+                            score = float(result.get('score', 0))
+                            score = max(0, min(100, score))  # Clamp between 0-100
+                        except (TypeError, ValueError):
+                            logger.warning(f"Invalid score value: {result.get('score')}, defaulting to 0")
+                            score = 0
+                        
+                        # Get suggestions and ensure it's a list
                         suggestions = result.get('suggestions', [])
+                        if not isinstance(suggestions, list):
+                            logger.warning(f"Expected suggestions to be a list, got: {type(suggestions)}")
+                            suggestions = []
+                        
+                        # Get missing keywords and ensure it's a list
                         missing_keywords = result.get('missing_keywords', [])
+                        if not isinstance(missing_keywords, list):
+                            logger.warning(f"Expected missing_keywords to be a list, got: {type(missing_keywords)}")
+                            missing_keywords = []
                         
                         logger.info(f"Optimization successful. Score: {score}")
+                        logger.info(f"Original text length: {len(resume_text)}")
+                        logger.info(f"Optimized text length: {len(optimized_text)}")
                         logger.info(f"Number of suggestions: {len(suggestions)}")
-                        logger.info(f"Missing keywords: {missing_keywords[:10]}")
+                        logger.info(f"Number of missing keywords: {len(missing_keywords)}")
+                        
+                        # Log first 200 chars of both texts for debugging
+                        logger.debug(f"Original text start: {resume_text[:200]}")
+                        logger.debug(f"Optimized text start: {optimized_text[:200]}")
+                        
+                        # If we have suggestions or missing keywords, append them to the optimized text
+                        if suggestions or missing_keywords:
+                            enhanced_sections = []
+                            
+                            if suggestions:
+                                suggestions_header = "\n\n=== SUGGESTED IMPROVEMENTS ===\n"
+                                suggestions_text = '\n'.join(f"- {sug.strip()}" for sug in suggestions if sug and str(sug).strip())
+                                if suggestions_text:
+                                    enhanced_sections.append(f"{suggestions_header}{suggestions_text}")
+                            
+                            if missing_keywords:
+                                keywords_header = "\n\n=== MISSING KEYWORDS ===\n"
+                                keywords_text = '\n'.join(f"- {kw.strip()}" for kw in missing_keywords if kw and str(kw).strip())
+                                if keywords_text:
+                                    enhanced_sections.append(f"{keywords_header}{keywords_text}")
+                            
+                            if enhanced_sections:
+                                enhanced_content = '\n'.join(enhanced_sections)
+                                if optimized_text.strip() != resume_text.strip():
+                                    optimized_text = f"{optimized_text}\n{enhanced_content}"
+                                else:
+                                    optimized_text = f"{resume_text}\n{enhanced_content}"
+                        
+                        # Final cleanup of any remaining control characters
+                        optimized_text = ''.join(char for char in optimized_text if ord(char) >= 32 or char in '\n\r\t')
                         
                         st.session_state[RESUME_DATA].update({
                             'optimized_resume': optimized_text,

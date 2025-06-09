@@ -241,7 +241,7 @@ class ResumeProcessor:
             response = await groq_client._make_request(
                 messages=[
                     {"role": "system", "content": "You are a professional resume parser. Extract structured information from the provided resume text."},
-                    {"role": "user", "content": prompt.format(text=text[:10000])}
+                    {"role": "user", "content": prompt.format(text=text[:8000])}
                 ],
                 model="mixtral-8x7b-32768"
             )
